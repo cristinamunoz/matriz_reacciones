@@ -1,0 +1,75 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+
+import pandas as pd
+
+
+# In[2]:
+
+
+achar = pd.read_table("Achar")
+nfurz = pd.read_table("Nfurz")
+dreri = pd.read_table("Dreri")
+
+
+# In[3]:
+
+
+reactions_achar = []
+for i in achar["Reactions"].tolist():
+    reactions_achar+=[s for s in str(i).strip().split(",") if s!='nan']
+
+
+# In[4]:
+
+
+reactions_nfurz = []
+for i in nfurz["Reactions"].tolist():
+    reactions_nfurz+=[s for s in str(i).strip().split(",") if s!='nan']
+
+
+# In[5]:
+
+
+reactions_dreri = []
+for i in dreri["Reactions"].tolist():
+    reactions_dreri+=[s for s in str(i).strip().split(",") if s!='nan']
+
+
+# In[6]:
+
+
+pez1 = pd.DataFrame(pd.Series(reactions_achar).value_counts()) 
+
+
+# In[7]:
+
+
+pez2 = pd.DataFrame(pd.Series(reactions_nfurz).value_counts()) 
+
+
+# In[8]:
+
+
+pez3 = pd.DataFrame(pd.Series(reactions_dreri).value_counts()) 
+
+
+# In[9]:
+
+
+pez1.columns = ['p1']
+pez2.columns = ['p2']
+pez3.columns = ['p3']
+
+
+# In[12]:
+
+
+pez1.join([pez2,pez3], how='outer').fillna(value=0)
+
+
+
+
