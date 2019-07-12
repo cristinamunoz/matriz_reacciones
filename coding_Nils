@@ -1,0 +1,122 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct 18 2016
+
+@author: Nils Jonathan Trost
+
+Creates a tab-separated matrix with reactions and their presence in different organisms.
+Can append to existing matrix
+
+Takes an pathway-tools output file as infile.
+"""
+
+import argparse
+import os
+
+
+def main():
+    # parse command line arguments
+    description = "Creates a tab-separated file containing a reaction/organism matrix; "
+    description += "Separate multiple infiles/names with comma."
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('in_path', help="Path to the infile(s).")
+    parser.add_argument('out_path', help="Path to the outfile")
+    parser.add_argument('organism', help="Name of the organism(s)")
+    parser.add_argument('-a', '--append', action="store_true",
+                        help="Append information of a new organism to the outfile")
+
+    args = parser.parse_args()
+
+    # split the infiles, if there are multiple
+    in_paths = args.in_path.split(',')
+    # make the path to the outfile absolute
+    out_path = os.path.abspath(args.out_path)
+    ap = args.append
+    # matrix will contain the reactions (key) and a list with True/False per Organism (value)
+    matrix = {}
+    # orgs will contain a list of the organism names
+    orgs = []
+    # if the outfile exists, but -a argument is not given, confirm with user,
+    # that the outfile will be overwritten
+    if os.path.isfile(out_path) and not ap:
+        cont = False
+        while not cont:
+            ans = input("outfile already exists; Do you wish to append it? (y/n): ")
+            if ans == 'y':
+                ap = True
+                cont = True
+            elif ans == 'n':
+                print("outfile will be overwritten.")
+                cont = True
+    # if -a option is set, first create a dictionary with all already existing reactions
+    if ap:
+        with open(out_path) as old:
+            for line in old:
+                if line.startswith('#'):
+                    # all existing organisms are appended to the orgs list
+                    orgs += line.rstrip('\n').split('\t')[1:]
+                else:
+                    # add all reactions to the dictionary
+                    react = line.split('\t')[0]
+                    presence = line.rstrip('\n').split('\t')[1:]
+                    l = []
+                    for p in presence:
+                        if p == '+':
+                            l.append(True)
+                        else:
+                            l.append(False)
+                    matrix[react] = l
+    for i in range(len(in_paths)):
+        # loop through each infile if there are multiple
+        # make the path absolute
+        in_path = os.path.abspath(in_paths[i])
+        # the organism of the infile is added to the orgs list
+        orgs.append(args.organism.split(',')[i])
+        with open(in_path) as infile:
+            # iterate over the lines of the infile
+            for line in infile:
+                # skip header lines
+                if not line.startswith('ID') and not line.startswith('All'):
+                    # reactions are in 4th column
+                    # there might be multiple, split by a ', '
+                    reacts = line.rstrip('\n').split('\t')[3].split(', ')
+                    for react in reacts:
+                        # skip empty rows
+                        if react != '':
+                            if react in matrix:
+                                # append True to the list of the corresponding reaction,
+                                # only if this has not already happened
+                                if len(matrix[react]) == len(orgs) - 1:
+                                    matrix[react].append(True)
+                            else:
+                                # create a new reaction in the matrix
+                                matrix[react] = []
+                                for j in range(len(orgs) - 1):
+                                    # append False for all previous organisms that don't have this reaction
+                                    matrix[react].append(False)
+                                # append True for the current organism
+                                matrix[react].append(True)
+
+        # append False for all reactions that are not present in the current organism
+        for react in matrix:
+            if len(matrix[react]) < len(orgs):
+                matrix[react].append(False)
+
+    # write the dictionary to the outfile
+    with open(out_path, 'w') as out:
+        out.write("#reaction")
+        for org in orgs:
+            out.write("\t" + org)
+        out.write("\n")
+        for react in sorted(matrix):
+            out.write(react)
+            for o in matrix[react]:
+                if o:
+                    out.write('\t+')
+                else:
+                    out.write('\t-')
+            out.write('\n')
+
+
+if __name__ == '__main__':
+    main()
